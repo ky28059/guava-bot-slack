@@ -1,0 +1,13 @@
+{
+  "name": "guava-bot-slack",
+  "main": "bot.ts",
+  "dependencies": {
+    "@slack/bolt": "^3.8.1",
+    "ngrok": "^4.2.2",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.4"
+  },
+  "scripts": {
+    "start": "ts-node bot.ts"
+  }
+}
