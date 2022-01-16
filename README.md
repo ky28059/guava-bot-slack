@@ -1,14 +1,15 @@
 # guava bot slack
 Slack bot for a certain elusive slack workspace.
 
-To run locally, create a `config.ts` in the root directory which exports your slack signing secret, bot user token, and 
-desired port to run the server on:
+To run locally, create a `config.ts` in the root directory which exports your slack signing secret, bot user token, port,
+and signup spreadsheet link and id:
 ```ts
 // config.ts
 export const signingSecret = 'legitimate-slack-signing-secret';
 export const token = 'xoxb-also-legitimate-slack-token';
 export const port = 3000;
 
+export const signupsLink = 'https://tinyurl.com/guava-gang-secret-build-signups!1!!1';
 export const spreadsheetId = 'some-spreadsheet-id';
 ```
 Install dependencies with `npm install` and run `npm start` to run the bot.

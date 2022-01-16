@@ -1,5 +1,6 @@
-import {App, SectionBlock} from '@slack/bolt';
-import {getHours} from './util';
+import {App} from '@slack/bolt';
+import {getHours} from './sheets';
+import {createSectionBlocks} from './util';
 import { signingSecret, token, port, signupsLink } from './config';
 
 
@@ -74,15 +75,7 @@ app.command('/gogurt', async ({command, ack, respond}) => {
 app.command('/help', async ({command, ack, respond}) => {
     await ack();
 
-    // Group commands in pairs, map to Slack Block Kit sections
-    const sections: SectionBlock[] = [];
-    for (let i = 0; i < commands.length; i += 2) {
-        const fields: SectionBlock['fields'] = [{type: 'mrkdwn', text: `*${commands[i].pattern}*\n${commands[i].desc}`}];
-        if (i + 1 < commands.length)
-            fields.push({type: 'mrkdwn', text: `*${commands[i + 1].pattern}*\n${commands[i + 1].desc}`});
-        sections.push({type: 'section', fields});
-    }
-
+    const sections = createSectionBlocks(commands.map(({pattern, desc}) => ({title: pattern, desc})));
     await respond({
         blocks: [
             {type: 'header', text: {type: 'plain_text', text: 'Commands'}},
