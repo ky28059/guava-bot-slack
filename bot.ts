@@ -1,6 +1,6 @@
 import {App, SectionBlock} from '@slack/bolt';
 import {getHours} from './util';
-import { signingSecret, token, port } from './config';
+import { signingSecret, token, port, signupsLink } from './config';
 
 
 const app = new App({
@@ -25,7 +25,7 @@ app.command('/signups', async ({command, ack, respond}) => {
     await respond({
         blocks: [
             {type: 'header', text: {type: 'plain_text', text: 'GRT Shoptime Signups'}},
-            {type: 'section', text: {type: 'mrkdwn', text: '<https://tinyurl.com/grtBuildSignups2022|Signup Sheet>'}}
+            {type: 'section', text: {type: 'mrkdwn', text: `<${signupsLink}|Signup Sheet>`}}
         ]
     });
 });
@@ -48,7 +48,7 @@ app.command('/hours', async ({command, client, ack, respond}) => {
 
     // Extract Slack real_name from user ID
     const {user} = await client.users.info({ token, user: command.user_id });
-    if (!user?.real_name) return;
+    if (!user?.real_name) return respond('An error occurred parsing your name.');
 
     const parsed = await getHours(user.real_name);
     if (!parsed) return respond('An error occurred parsing your name.');

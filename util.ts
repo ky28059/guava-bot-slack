@@ -23,8 +23,8 @@ export async function getHours(name: string, day?: number) {
     if (!res.data.values) return;
 
     const [first, last] = name.split(' ');
-    let totals = res.data.values.find(row => row[0] === first);
-    if (!totals) totals = res.data.values.find(row => row[0] === last); // Try last name if first name fails
+    const totals = res.data.values.find(row => row[0].toLowerCase() === first.toLowerCase())
+        ?? res.data.values.find(row => row[0].toLowerCase() === last.toLowerCase()); // Try last name if first name fails
     if (!totals) return;
 
     return {week, hours: totals[day ?? 8]};
