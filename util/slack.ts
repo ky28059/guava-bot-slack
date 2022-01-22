@@ -3,7 +3,7 @@ import {MrkdwnElement, SectionBlock} from '@slack/bolt';
 
 type Block = {title: string, desc: string};
 
-// Creates an array of section blocks from a given array by grouping elements into pairs
+// Creates an array of Block Kit section blocks from an object array by grouping elements into pairs
 export function createSectionBlocks(blocks: Block[]) {
     const sections: SectionBlock[] = [];
 

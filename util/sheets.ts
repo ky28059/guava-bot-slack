@@ -1,5 +1,5 @@
 import {google} from 'googleapis';
-import {spreadsheetId} from './config';
+import {spreadsheetId} from '../config';
 
 
 const auth = new google.auth.GoogleAuth({
@@ -29,14 +29,14 @@ export async function getHours(name: string, day?: number) {
     return {week, hours: totals[day ?? 8]};
 }
 
-// Returns the current week's signup sheet name (1/12/2022 -> '1/9-1/15')
+// Returns the current week's signup sheet tab name (1/12/2022 -> '1/9-1/15')
 // https://stackoverflow.com/a/57914095
 function getCurrentSheetName() {
     const start = new Date();
-    start.setDate(start.getDate() - start.getDay()); // Last sunday
+    start.setDate(start.getDate() - start.getDay() + 1); // Last monday
 
     const end = new Date(start);
-    end.setDate(end.getDate() + 6); // Next saturday
+    end.setDate(end.getDate() + 6); // Next sunday
 
     return `${start.getMonth() + 1}/${start.getDate()}-${end.getMonth() + 1}/${end.getDate()}`;
 }
