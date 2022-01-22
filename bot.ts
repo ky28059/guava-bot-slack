@@ -1,6 +1,6 @@
-import {App} from '@slack/bolt';
+import {App, StaticSelectAction} from '@slack/bolt';
 import {getHours} from './util/sheets';
-import {createSectionBlocks} from './util/slack';
+import {createSectionBlocks, header, markdown, option, plainText} from './util/slack';
 import {dayToNumber} from './util/parsing';
 import { signingSecret, token, port, signupsLink } from './config';
 
@@ -26,8 +26,8 @@ app.command('/signups', async ({command, ack, respond}) => {
     await ack();
     await respond({
         blocks: [
-            {type: 'header', text: {type: 'plain_text', text: 'GRT Shoptime Signups'}},
-            {type: 'section', text: {type: 'mrkdwn', text: `<${signupsLink}|Signup Sheet>`}}
+            header('GRT Shoptime Signups'),
+            {type: 'section', text: markdown(`<${signupsLink}|Signup Sheet>`)}
         ]
     });
 });
@@ -60,27 +60,68 @@ app.command('/hours', async ({command, client, ack, respond}) => {
         const day = dayToNumber(args[0]);
         if (!day) return respond(`Argument \`${args[0]}\` could not be resolved to a day.`);
 
-        const parsed = await getHours(user.real_name, day.num + 1); // Add one to skip name column
-        if (!parsed) return respond('An error occurred parsing your name.');
+        const response = await hoursResponse(user.real_name, day.num + 1, day.name); // Add one to skip name column
+        if (!response) return respond('An error occurred parsing your name.');
 
-        return respond({
-            blocks: [
-                {type: 'header', text: {type: 'plain_text', text: `Shoptime hours for ${day.name}, week of ${parsed.week}`}},
-                {type: 'section', text: {type: 'mrkdwn', text: `You have signed up for ${parsed.hours} hours of shoptime this ${day.name}.`}}
-            ]
-        });
+        return respond(response);
     }
 
-    const parsed = await getHours(user.real_name);
-    if (!parsed) return respond('An error occurred parsing your name.');
+    const response = await hoursResponse(user.real_name);
+    if (!response) return respond('An error occurred parsing your name.');
 
-    await respond({
-        blocks: [
-            {type: 'header', text: {type: 'plain_text', text: `Shoptime hours, week of ${parsed.week}`}},
-            {type: 'section', text: {type: 'mrkdwn', text: `You have signed up for ${parsed.hours} hours of shoptime this week.`}}
-        ]
-    });
+    await respond(response);
 });
+
+app.action('hours-dropdown', async ({body, payload, client, ack, respond}) => {
+    await ack();
+
+    // Extract Slack real_name from user ID
+    const {user} = await client.users.info({ token, user: body.user.id });
+    if (!user?.real_name) return respond('An error occurred parsing your name.');
+
+    const option = (payload as StaticSelectAction).selected_option;
+    const response = await hoursResponse(user.real_name, Number(option.value), option.text.text);
+    if (!response) return respond('An error occurred parsing your name.');
+
+    await respond(response);
+});
+
+// Returns the /hours response message given the user's name and requested day and day name.
+// `user.real_name` and day parsing cannot be recycled between the slash command and dropdown response, as they rely
+// on different API response fields to work, leading to the current unideal solution of passing in day and dayName
+// explicitly.
+async function hoursResponse(name: string, day?: number, dayName?: string) {
+    const parsed = await getHours(name, day);
+    if (!parsed) return;
+
+    const heading = header(day !== undefined
+        ? `Shoptime hours for ${dayName}, week of ${parsed.week}`
+        : `Shoptime hours, week of ${parsed.week}`);
+
+    return {
+        blocks: [
+            heading,
+            {type: 'section', text: markdown(`You have signed up for ${parsed.hours} hours of shoptime this ${dayName ?? 'week'}.`)},
+            {
+                type: 'actions',
+                elements: [{
+                    type: 'static_select',
+                    placeholder: plainText('Select a day'),
+                    options: [
+                        option('Sunday', '1'),
+                        option('Monday', '2'),
+                        option('Tuesday', '3'),
+                        option('Wednesday', '4'),
+                        option('Thursday', '5'),
+                        option('Friday', '6'),
+                        option('Saturday', '7'),
+                    ],
+                    action_id: 'hours-dropdown'
+                }]
+            }
+        ]
+    };
+}
 
 // /gogurt
 // Go GRT!
@@ -97,8 +138,8 @@ app.command('/help', async ({command, ack, respond}) => {
     const sections = createSectionBlocks(commands.map(({pattern, desc}) => ({title: pattern, desc})));
     await respond({
         blocks: [
-            {type: 'header', text: {type: 'plain_text', text: 'Help — Commands'}},
-            {type: 'section', text: {type: 'mrkdwn', text: 'Guava Bot is open sourced on <https://github.com/ky28059/guava-bot-slack|GitHub>.'}},
+            header('Help — Commands'),
+            {type: 'section', text: markdown('Guava Bot is open sourced on <https://github.com/ky28059/guava-bot-slack|GitHub>.')},
             ...sections
         ]
     });

@@ -1,9 +1,28 @@
-import {MrkdwnElement, SectionBlock} from '@slack/bolt';
+import {HeaderBlock, MrkdwnElement, PlainTextElement, SectionBlock} from '@slack/bolt';
 
 
-type Block = {title: string, desc: string};
+// Creates a Block Kit plain_text element
+export function plainText(text: string): PlainTextElement {
+    return {type: 'plain_text', text};
+}
+
+// Creates a Block Kit mrkdwn element
+export function markdown(text: string): MrkdwnElement {
+    return {type: 'mrkdwn', text};
+}
+
+// Creates a Block Kit header block
+export function header(text: string): HeaderBlock {
+    return {type: 'header', text: plainText(text)};
+}
+
+// Creates a Block Kit dropdown option
+export function option(text: string, value: string) {
+    return {text: plainText(text), value};
+}
 
 // Creates an array of Block Kit section blocks from an object array by grouping elements into pairs
+type Block = {title: string, desc: string};
 export function createSectionBlocks(blocks: Block[]) {
     const sections: SectionBlock[] = [];
 
@@ -16,6 +35,6 @@ export function createSectionBlocks(blocks: Block[]) {
     return sections;
 }
 
-function createMarkdownBlock(block: Block): MrkdwnElement {
-    return {type: 'mrkdwn', text: `*${block.title}*\n${block.desc}`}
+function createMarkdownBlock(block: Block) {
+    return markdown(`*${block.title}*\n${block.desc}`);
 }
