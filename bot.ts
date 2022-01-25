@@ -60,16 +60,16 @@ app.command('/hours', async ({command, client, ack, respond}) => {
         const day = dayToNumber(args[0]);
         if (!day) return respond(`Argument \`${args[0]}\` could not be resolved to a day.`);
 
-        const response = await hoursResponse(user.real_name, day.num + 1, day.name); // Add one to skip name column
-        if (!response) return respond('An error occurred parsing your name.');
+        const message = await hoursResponse(user.real_name, day.num + 1, day.name); // Add one to skip name column
+        if (!message) return respond('An error occurred parsing your name.');
 
-        return respond(response);
+        return respond(message);
     }
 
-    const response = await hoursResponse(user.real_name);
-    if (!response) return respond('An error occurred parsing your name.');
+    const message = await hoursResponse(user.real_name);
+    if (!message) return respond('An error occurred parsing your name.');
 
-    await respond(response);
+    await respond(message);
 });
 
 app.action('hours-dropdown', async ({body, payload, client, ack, respond}) => {
@@ -79,11 +79,14 @@ app.action('hours-dropdown', async ({body, payload, client, ack, respond}) => {
     const {user} = await client.users.info({ token, user: body.user.id });
     if (!user?.real_name) return respond('An error occurred parsing your name.');
 
+    // Extract standardized day name from first part of option value ('Saturday 1/29' -> 'Saturday')
     const option = (payload as StaticSelectAction).selected_option;
-    const response = await hoursResponse(user.real_name, Number(option.value), option.text.text);
-    if (!response) return respond('An error occurred parsing your name.');
+    const dayName = option.text.text !== 'Total' ? option.text.text.split(' ')[0] : undefined;
 
-    await respond(response);
+    const message = await hoursResponse(user.real_name, Number(option.value), dayName);
+    if (!message) return respond('An error occurred parsing your name.');
+
+    await respond(message);
 });
 
 // Returns the /hours response message given the user's name and requested day and day name.
@@ -94,7 +97,7 @@ async function hoursResponse(name: string, day?: number, dayName?: string) {
     const parsed = await getHours(name, day);
     if (!parsed) return;
 
-    const heading = header(day !== undefined
+    const heading = header(dayName
         ? `Shoptime hours for ${dayName}, week of ${parsed.week}`
         : `Shoptime hours, week of ${parsed.week}`);
 
@@ -107,15 +110,7 @@ async function hoursResponse(name: string, day?: number, dayName?: string) {
                 elements: [{
                     type: 'static_select',
                     placeholder: plainText('Select a day'),
-                    options: [
-                        option('Sunday', '1'),
-                        option('Monday', '2'),
-                        option('Tuesday', '3'),
-                        option('Wednesday', '4'),
-                        option('Thursday', '5'),
-                        option('Friday', '6'),
-                        option('Saturday', '7'),
-                    ],
+                    options: parsed.days.map((day, i) => option(day, (i + 1).toString())),
                     action_id: 'hours-dropdown'
                 }]
             }

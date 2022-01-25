@@ -30,7 +30,10 @@ To use the sheets API, create a [Google cloud project](https://console.cloud.goo
 API](https://console.cloud.google.com/marketplace/product/google/sheets.googleapis.com). Create a service account via
 `Create Credentials > Google Sheets API > Application data`. In your service account details page, save your key file 
 (`Keys > Add Key > Create new key > JSON`) as `keys.json`.
-[...]
+
+![image](https://user-images.githubusercontent.com/60120929/150878787-2d51b0f7-195e-4584-80da-364b38b58d40.png)
+
+Make sure whatever spreadsheet you're using as the linked signup spreadsheet is shared with your service account.
 
 ### Deployment
 [...]

@@ -13,12 +13,13 @@ const sheets = google.sheets({ version: 'v4', auth });
 // Get a user's total shoptime hours for this week given their name.
 // TODO: think about name parsing; some people are listed under their first names (Alina, Ipsita) and some under their
 // last (Liang, Lin). The issue comes from people listed under neither (Fu -> Fuey).
+// Returns the week name, parsed hours, and list of day names for the dropdown.
 export async function getHours(name: string, day?: number) {
     const week = getCurrentSheetName();
 
     const res = await sheets.spreadsheets.values.get({
         auth, spreadsheetId,
-        range: `${week}!A2:I47`
+        range: `${week}!A1:I47`
     });
     if (!res.data.values) return;
 
@@ -26,17 +27,23 @@ export async function getHours(name: string, day?: number) {
     const totals = res.data.values.find(row => row[0].toLowerCase() === first.toLowerCase() || row[0].toLowerCase() === last.toLowerCase());
     if (!totals) return;
 
-    return {week, hours: totals[day ?? 8]};
+    return {week, hours: totals[day ?? 8], days: res.data.values[0].slice(1)};
 }
 
-// Returns the current week's signup sheet tab name (1/12/2022 -> '1/9-1/15')
+// Returns the current week's signup hours tab name (1/25/2022 -> '1/23-1/29')
 // https://stackoverflow.com/a/57914095
-function getCurrentSheetName() {
+function getCurrentSheetName(offset: number = 0) {
     const start = new Date();
-    start.setDate(start.getDate() - start.getDay() + 1); // Last monday
+    start.setDate(start.getDate() - start.getDay() + offset); // Last sunday
 
     const end = new Date(start);
-    end.setDate(end.getDate() + 6); // Next sunday
+    end.setDate(end.getDate() + 6); // Next saturday
 
     return `${start.getMonth() + 1}/${start.getDate()}-${end.getMonth() + 1}/${end.getDate()}`;
+}
+
+// Returns the current week's signup tab name (1/25/2022 -> '1/24-1/30 Sign Ups')
+// The signups tab dates are offset by 1 from the signup hours dates, because Sunday is signed up for in the previous week
+function getCurrentSignupSheetName() {
+    return `${getCurrentSheetName(1)} Sign Ups`;
 }
