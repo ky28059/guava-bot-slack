@@ -24,10 +24,34 @@ export async function getHours(name: string, day?: number) {
     if (!res.data.values) return;
 
     const [first, last] = name.split(' ');
-    const totals = res.data.values.find(row => row[0].toLowerCase() === first.toLowerCase() || row[0].toLowerCase() === last.toLowerCase());
+    const totals = res.data.values.find(row => row[0].toLowerCase() === first.toLowerCase() || row[0].toLowerCase() === last?.toLowerCase());
     if (!totals) return;
 
     return {week, hours: totals[day ?? 8], days: res.data.values[0].slice(1)};
+}
+
+export async function getStatuses() {
+    const sheet = getCurrentSignupSheetName();
+
+    const res = await sheets.spreadsheets.values.get({
+        auth, spreadsheetId,
+        range: `${sheet}!A1:C`
+    });
+    if (!res.data.values) return;
+
+    const days: string[] = [];
+    let text = '';
+    for (const [label, value, count] of res.data.values) {
+        // Ignore spacer rows
+        if (!value) continue;
+        if (label.match(/^\d+:\d+\s[AP]M/i)) {
+            text += `*${label}:* _${value}_ \`(${count})\`\n`;
+        } else if (label !== 'Start Time') {
+            days.push(text);
+            text = `*${label} (${value})*\n\n`;
+        }
+    }
+    return days.slice(1);
 }
 
 // Returns the current week's signup hours tab name (1/25/2022 -> '1/23-1/29')

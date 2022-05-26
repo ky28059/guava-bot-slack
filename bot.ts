@@ -1,6 +1,7 @@
 import {App, StaticSelectAction} from '@slack/bolt';
-import {getHours} from './util/sheets';
-import {createSectionBlocks, header, markdown, option, plainText} from './util/slack';
+import {Actions, Header, Message, Option, Section, StaticSelect} from 'slack-block-builder';
+import {getHours, getStatuses} from './util/sheets';
+import {createSectionBlocks} from './util/slack';
 import {dayToNumber} from './util/parsing';
 import { signingSecret, token, port, signupsLink } from './config';
 
@@ -21,15 +22,19 @@ const commands: Command[] = [
 
 // /signups
 // Sends a link to the shoptime signup spreadsheet.
-// TODO: consider adding advanced features like which days have free slots, which week it is, how many hours a person has, etc.
 app.command('/signups', async ({command, ack, respond}) => {
     await ack();
-    await respond({
-        blocks: [
-            header('GRT Shoptime Signups'),
-            {type: 'section', text: markdown(`<${signupsLink}|Signup Sheet>`)}
-        ]
-    });
+    const statuses = await getStatuses();
+
+    await respond(
+        Message()
+            .blocks([
+                Header({text: 'GRT Shoptime Signups'}),
+                Section().fields(statuses),
+                Section({text: `<${signupsLink}|Signup Sheet>`})
+            ])
+            .buildToObject()
+    );
 });
 
 // /signup [day] [hours]
@@ -55,7 +60,7 @@ app.command('/hours', async ({command, client, ack, respond}) => {
     // TODO: consider abstracting argument parsing
     // I don't think this application needs a massive and somewhat scary pattern-based argParser like what RBot has,
     // but perhaps some abstraction would be nice.
-    const args = command.text.match(/("(?:[^"\\]|\\.)*")|[^\s]+/g);
+    const args = command.text.match(/("(?:[^"\\]|\\.)*")|\S+/g);
     if (args?.length) {
         const day = dayToNumber(args[0]);
         if (!day) return respond(`Argument \`${args[0]}\` could not be resolved to a day.`);
@@ -67,8 +72,6 @@ app.command('/hours', async ({command, client, ack, respond}) => {
     }
 
     const message = await hoursResponse(user.real_name);
-    if (!message) return respond('An error occurred parsing your name.');
-
     await respond(message);
 });
 
@@ -84,8 +87,6 @@ app.action('hours-dropdown', async ({body, payload, client, ack, respond}) => {
     const dayName = option.text.text !== 'Total' ? option.text.text.split(' ')[0] : undefined;
 
     const message = await hoursResponse(user.real_name, Number(option.value), dayName);
-    if (!message) return respond('An error occurred parsing your name.');
-
     await respond(message);
 });
 
@@ -95,27 +96,29 @@ app.action('hours-dropdown', async ({body, payload, client, ack, respond}) => {
 // explicitly.
 async function hoursResponse(name: string, day?: number, dayName?: string) {
     const parsed = await getHours(name, day);
-    if (!parsed) return;
 
-    const heading = header(dayName
-        ? `Shoptime hours for ${dayName}, week of ${parsed.week}`
-        : `Shoptime hours, week of ${parsed.week}`);
+    if (!parsed) return Message()
+        .blocks([
+            Header({text: 'There was an error fetching your hours.'}),
+            Section({text: 'Your name may not be listed in the spreadsheet, or the parsing may be off.'})
+        ])
+        .buildToObject();
 
-    return {
-        blocks: [
-            heading,
-            {type: 'section', text: markdown(`You have signed up for ${parsed.hours} hours of shoptime this ${dayName ?? 'week'}.`)},
-            {
-                type: 'actions',
-                elements: [{
-                    type: 'static_select',
-                    placeholder: plainText('Select a day'),
-                    options: parsed.days.map((day, i) => option(day, (i + 1).toString())),
-                    action_id: 'hours-dropdown'
-                }]
-            }
-        ]
-    };
+    const options = parsed.days.map((day, i) => Option({text: day, value: (i + 1).toString()}));
+
+    return Message()
+        .blocks([
+            Header({text: dayName
+                ? `Shoptime hours for ${dayName}, week of ${parsed.week}`
+                : `Shoptime hours, week of ${parsed.week}`
+            }),
+            Section({text: `You have signed up for ${parsed.hours} hours of shoptime this ${dayName ?? 'week'}.`}),
+            Actions().elements(
+                StaticSelect({placeholder: 'Select a day', actionId: 'hours-dropdown'})
+                    .options(options)
+                    .initialOption(options[(day ?? 8) - 1]))
+        ])
+        .buildToObject();
 }
 
 // /gogurt
@@ -131,13 +134,15 @@ app.command('/help', async ({command, ack, respond}) => {
     await ack();
 
     const sections = createSectionBlocks(commands.map(({pattern, desc}) => ({title: pattern, desc})));
-    await respond({
-        blocks: [
-            header('Help — Commands'),
-            {type: 'section', text: markdown('Guava Bot is open sourced on <https://github.com/ky28059/guava-bot-slack|GitHub>.')},
-            ...sections
-        ]
-    });
+    await respond(
+        Message()
+            .blocks([
+                Header({text: 'Help — Commands'}),
+                Section({text: 'Guava Bot is open sourced on <https://github.com/ky28059/guava-bot-slack|GitHub>.'}),
+                ...sections
+            ])
+            .buildToObject()
+    );
 });
 
 // TODO: log reactions on spreadsheet
