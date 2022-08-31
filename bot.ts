@@ -39,43 +39,53 @@ app.command('/help', async ({command, ack, respond}) => {
 app.shortcut<MessageShortcut>('reacted-shortcut', async ({ack, payload, client}) => {
     await ack();
 
-    const users = (await client.users.list()).members;
-    const reactions = (await client.reactions.get({
-        channel: payload.channel.id,
-        timestamp: payload.message.ts,
-        full: true
-    })).message?.reactions;
+    try {
+        const users = (await client.users.list()).members;
 
-    // Flatmap reacted users to the IDs set.
-    // TODO: better way of doing this?
-    const reactedIds = new Set<string>();
-    if (reactions) for (const {users} of reactions) {
-        if (!users) continue;
-        for (const id of users) reactedIds.add(id);
-    }
+        const reactions = (await client.reactions.get({
+            channel: payload.channel.id,
+            timestamp: payload.message.ts,
+            full: true
+        })).message?.reactions;
 
-    const reactedMessage = reactedIds.size
-        ? [...reactedIds].map(id => `<@${id}>`).join('\n')
-        : '_No one has reacted yet._'
+        // Flatmap reacted users to the IDs set.
+        // TODO: better way of doing this?
+        const reactedIds = new Set<string>();
+        if (reactions) for (const {users} of reactions) {
+            if (!users) continue;
+            for (const id of users) reactedIds.add(id);
+        }
 
-    const notReactedMessage = users
-        ?.filter(user => user.id && !reactedIds.has(user.id))
-        .filter(user => !user.deleted && !user.is_bot && !['U03SHM9TC7Q', 'U03SQ75BQMR', 'U03G98CQZ5X', 'USLACKBOT'].includes(user.id!)) // Exclude bots, deleted accounts, and Granlund, P. Roan, the gunnrobotics account, and slackbot (because the bot check doesn't seem to work for slackbot)
-        .map(user => `${user.real_name} (<@${user.id}>)`)
-        .join('\n')
-        ?? '_Everyone has reacted!_';
+        const reactedMessage = reactedIds.size
+            ? [...reactedIds].map(id => `<@${id}>`).join('\n')
+            : '_No one has reacted yet._'
 
-    await client.views.open({
-        trigger_id: payload.trigger_id,
-        view: Modal({title: 'Message Reactions'})
-            .blocks(
-                Section().fields(
-                    `*Reacted:*\n${reactedMessage}`,
-                    `*Haven't reacted:*\n${notReactedMessage}`
+        const notReactedMessage = users
+                ?.filter(user => user.id && !reactedIds.has(user.id))
+                .filter(user => !user.deleted && !user.is_bot && !['U03SHM9TC7Q', 'U03SQ75BQMR', 'U03G98CQZ5X', 'USLACKBOT'].includes(user.id!)) // Exclude bots, deleted accounts, and Granlund, P. Roan, the gunnrobotics account, and slackbot (because the bot check doesn't seem to work for slackbot)
+                .map(user => `${user.real_name} (<@${user.id}>)`)
+                .join('\n')
+            ?? '_Everyone has reacted!_';
+
+        await client.views.open({
+            trigger_id: payload.trigger_id,
+            view: Modal({title: 'Message Reactions'})
+                .blocks(
+                    Section().fields(
+                        `*Reacted:*\n${reactedMessage}`,
+                        `*Haven't reacted:*\n${notReactedMessage}`
+                    )
                 )
-            )
-            .buildToObject()
-    })
+                .buildToObject()
+        })
+    } catch {
+        await client.views.open({
+            trigger_id: payload.trigger_id,
+            view: Modal({title: 'An error occured.'})
+                .blocks(Section({text: 'Please check that <@U040S0NCWM7> has been added and has access to this channel. Contact <@U03SQ766BFD> if you have further questions!'}))
+                .buildToObject()
+        })
+    }
 });
 
 ;(async () => {
