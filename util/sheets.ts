@@ -41,7 +41,7 @@ export async function getSignUps(name: string) {
 
 // Returns the current week's dinner signup tab name (1/11/2023 -> '1/9-1/13')
 // https://stackoverflow.com/a/57914095
-function getCurrentSheetName() {
+export function getCurrentSheetName() {
     const start = new Date();
     start.setDate(start.getDate() - start.getDay() + 1); // Last monday
 
