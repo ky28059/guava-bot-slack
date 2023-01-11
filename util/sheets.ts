@@ -10,64 +10,43 @@ const auth = new google.auth.GoogleAuth({
 const sheets = google.sheets({ version: 'v4', auth });
 
 
-// Get a user's total shoptime hours for this week given their name.
-// TODO: think about name parsing; some people are listed under their first names (Alina, Ipsita) and some under their
-// last (Liang, Lin). The issue comes from people listed under neither (Fu -> Fuey).
-// Returns the week name, parsed hours, and list of day names for the dropdown.
-export async function getHours(name: string, day?: number) {
-    const week = getCurrentSheetName();
+// Get a user's dinner signups for this week given their name.
+// TODO: name parsing for the ethans
+// Returns the week name and a list of sign-up information per day.
+export async function getSignUps(name: string) {
+    const weekName = getCurrentSheetName();
 
-    const res = await sheets.spreadsheets.values.get({
+    const sheet = (await sheets.spreadsheets.values.get({
         auth, spreadsheetId,
-        range: `${week}!A1:I47`
-    });
-    if (!res.data.values) return;
+        range: `${weekName}!A1:AW14`
+    })).data.values;
+    if (!sheet) return;
 
-    const [first, last] = name.split(' ');
-    const totals = res.data.values.find(row => row[0].toLowerCase() === first.toLowerCase() || row[0].toLowerCase() === last?.toLowerCase());
-    if (!totals) return;
+    const [first,] = name.split(' ');
+    const column = sheet[0].findIndex(col => col.toLowerCase() === first.toLowerCase());
+    if (column == -1) return;
 
-    return {week, hours: totals[day ?? 8], days: res.data.values[0].slice(1)};
+    return {
+        week: weekName,
+        days: [
+            // TODO: better way of doing this?
+            {name: 'Monday', slots: sheet[1][1], signedUp: sheet[1][column] == 'Yes'},
+            {name: 'Tuesday', slots: sheet[4][1], signedUp: sheet[4][column] == 'Yes'},
+            {name: 'Wednesday', slots: sheet[7][1], signedUp: sheet[7][column] == 'Yes'},
+            {name: 'Thursday', slots: sheet[10][1], signedUp: sheet[10][column] == 'Yes'},
+            {name: 'Friday', slots: sheet[13][1], signedUp: sheet[13][column] == 'Yes'},
+        ]
+    };
 }
 
-export async function getStatuses() {
-    const sheet = getCurrentSignupSheetName();
-
-    const res = await sheets.spreadsheets.values.get({
-        auth, spreadsheetId,
-        range: `${sheet}!A1:C`
-    });
-    if (!res.data.values) return;
-
-    const days: string[] = [];
-    let text = '';
-    for (const [label, value, count] of res.data.values) {
-        // Ignore spacer rows
-        if (!value) continue;
-        if (label.match(/^\d+:\d+\s[AP]M/i)) {
-            text += `*${label}:* _${value}_ \`(${count})\`\n`;
-        } else if (label !== 'Start Time') {
-            days.push(text);
-            text = `*${label} (${value})*\n\n`;
-        }
-    }
-    return days.slice(1);
-}
-
-// Returns the current week's signup hours tab name (1/25/2022 -> '1/23-1/29')
+// Returns the current week's dinner signup tab name (1/11/2023 -> '1/9-1/13')
 // https://stackoverflow.com/a/57914095
-function getCurrentSheetName(offset: number = 0) {
+function getCurrentSheetName() {
     const start = new Date();
-    start.setDate(start.getDate() - start.getDay() + offset); // Last sunday
+    start.setDate(start.getDate() - start.getDay() + 1); // Last monday
 
     const end = new Date(start);
-    end.setDate(end.getDate() + 6); // Next saturday
+    end.setDate(end.getDate() + 4); // This friday
 
     return `${start.getMonth() + 1}/${start.getDate()}-${end.getMonth() + 1}/${end.getDate()}`;
-}
-
-// Returns the current week's signup tab name (1/25/2022 -> '1/24-1/30 Sign Ups')
-// The signups tab dates are offset by 1 from the signup hours dates, because Sunday is signed up for in the previous week
-function getCurrentSignupSheetName() {
-    return `${getCurrentSheetName(1)} Sign Ups`;
 }

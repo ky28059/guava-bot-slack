@@ -1,6 +1,7 @@
 import {App, MessageShortcut} from '@slack/bolt';
-import {Header, Message, Modal, Section} from 'slack-block-builder';
+import {Checkboxes, Header, Input, Message, Modal, Option, Section} from 'slack-block-builder';
 import { signingSecret, token, port } from './config';
+import {getSignUps} from './util/sheets';
 
 
 const app = new App({
@@ -26,12 +27,55 @@ app.command('/help', async ({command, ack, respond}) => {
                 Header({text: 'Help — Commands'}),
                 Section({text: 'Guava Bot is open sourced on <https://github.com/ky28059/guava-bot-slack|GitHub>.'}),
                 Section().fields(
-                    `*/help*\nSends info about other available commands.`,
-                    `*/gogurt*\nGo GRT!`
+                    '*/help*\nSends info about other available commands.',
+                    '*/gogurt*\nGo GRT!'
+                ),
+                Section().fields(
+                    '*/dinner*\nManages your dinner sign-ups.'
                 )
             ])
             .buildToObject()
     );
+});
+
+// /dinner
+// Manages people's dinner sign-ups.
+app.command('/dinner', async ({command, ack, client, payload}) => {
+    await ack();
+
+    // Get user real name
+    const res = await client.users.info({ token, user: command.user_id });
+    if (!res.user?.real_name) return void client.views.open({
+        trigger_id: payload.trigger_id,
+        view: Modal({title: 'An error occurred fetching your name.'})
+            .blocks(Section({text: 'Please make sure your Slack `real_name` is set to your real name. If you think this a mistake, please report this error to <@U03SQ766BFD>.'}))
+            .buildToObject()
+    });
+
+    // Fetch sign-up sheet
+    const info = await getSignUps(res.user!.real_name!);
+    if (!info) return void client.views.open({
+        trigger_id: payload.trigger_id,
+        view: Modal({title: 'An error occurred fetching your entry on the sign-ups sheet.'})
+            .blocks(Section({text: 'Please make sure your Slack `real_name` is set to your real name. If you think this a mistake, please report this error to <@U03SQ766BFD>.'}))
+            .buildToObject()
+    });
+
+    const options = info.days.map(day => Option({text: day.name, description: day.slots, value: day.name}));
+    const initialOptions = info.days
+        .filter(day => day.signedUp)
+        .map(day => Option({text: day.name, description: day.slots, value: day.name}))
+
+    const view = Modal({title: `${info.week} Dinner Sign-ups`, submit: 'Submit', callbackId: 'dinner-modal'})
+        .blocks(
+            Section({text: `Your dinner sign-ups for the week of ${info.week}. Don't sign up for a day that is already full, and remember that if you sign up for dinner you *must* stay for the rest of the night.`}),
+            Input({label: 'Sign-ups', blockId: 'sign-ups'})
+                .element(Checkboxes({actionId: 'sign-ups-checkboxes'})
+                    .options(options)
+                    .initialOptions(initialOptions))
+        )
+        .buildToObject()
+    await client.views.open({trigger_id: payload.trigger_id, view});
 });
 
 // reacted-shortcut
@@ -61,10 +105,9 @@ app.shortcut<MessageShortcut>('reacted-shortcut', async ({ack, payload, client})
             : '_No one has reacted yet._'
 
         const notReactedMessage = users
-                ?.filter(user => user.id && !reactedIds.has(user.id))
-                .filter(user => !user.deleted && !user.is_bot && !['U03SHM9TC7Q', 'U03SQ75BQMR', 'U03G98CQZ5X', 'USLACKBOT'].includes(user.id!)) // Exclude bots, deleted accounts, and Granlund, P. Roan, the gunnrobotics account, and slackbot (because the bot check doesn't seem to work for slackbot)
-                .map(user => `${user.real_name} (<@${user.id}>)`)
-                .join('\n')
+            ?.filter(user => user.id && !reactedIds.has(user.id) && !user.deleted && !user.is_bot && !['U03SHM9TC7Q', 'U03SQ75BQMR', 'U03G98CQZ5X', 'USLACKBOT'].includes(user.id!)) // Exclude bots, deleted accounts, and Granlund, P. Roan, the gunnrobotics account, and slackbot (because the bot check doesn't seem to work for slackbot)
+            .map(user => `${user.real_name} (<@${user.id}>)`)
+            .join('\n')
             ?? '_Everyone has reacted!_';
 
         await client.views.open({
