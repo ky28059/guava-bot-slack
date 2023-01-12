@@ -12,14 +12,14 @@ const app = new App({
 
 // /gogurt
 // Go GRT!
-app.command('/gogurt', async ({command, ack, respond}) => {
+app.command('/gogurt', async ({ack, respond}) => {
     await ack();
     await respond('Go GRT! 👏');
 });
 
 // /help
 // Sends info about other available commands.
-app.command('/help', async ({command, ack, respond}) => {
+app.command('/help', async ({ack, respond}) => {
     await ack();
     await respond(
         Message()
@@ -69,10 +69,11 @@ app.command('/dinner', async ({command, ack, client, payload}) => {
     const view = Modal({title: `${info.week} Dinner Sign-ups`, submit: 'Submit', callbackId: 'dinner-modal'})
         .blocks(
             Section({text: `Your dinner sign-ups for the week of ${info.week}. Don't sign up for a day that is already full, and remember that if you sign up for dinner you *must* stay for the rest of the night.`}),
-            Input({label: 'Sign-ups', blockId: 'sign-up-checkboxes'})
+            Input({label: 'Your dinner sign-ups:', blockId: 'sign-up-checkboxes'})
                 .element(Checkboxes({actionId: 'sign-up-action'})
                     .options(options)
                     .initialOptions(initialOptions))
+                .hint('Check the corresponding box and submit this modal to sign up for a day.')
         )
         .buildToObject()
     await client.views.open({trigger_id: payload.trigger_id, view});
