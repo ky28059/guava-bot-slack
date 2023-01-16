@@ -1,7 +1,7 @@
 import {App, MessageShortcut} from '@slack/bolt';
 import {Checkboxes, Header, Input, Message, Modal, Option, Section} from 'slack-block-builder';
 import { signingSecret, token, port } from './config';
-import {getCurrentSheetName, getSignUps} from './util/sheets';
+import {getCurrentSheetName, getSignUps, updateSignUps} from './util/sheets';
 
 
 const app = new App({
@@ -66,7 +66,7 @@ app.command('/dinner', async ({command, ack, client, payload}) => {
         .filter(day => day.signedUp)
         .map(day => Option({text: day.name, description: day.slots, value: day.name}))
 
-    const view = Modal({title: `${info.week} Dinner Sign-ups`, submit: 'Submit', callbackId: 'dinner-modal'})
+    const view = Modal({title: `${info.week} Dinner Sign-ups`, submit: 'Submit', callbackId: 'dinner-modal', privateMetaData: info.column.toString()})
         .blocks(
             Section({text: `Your dinner sign-ups for the week of ${info.week}. Don't sign up for a day that is already full, and remember that if you sign up for dinner you *must* stay for the rest of the night.`}),
             Input({label: 'Your dinner sign-ups:', blockId: 'sign-up-checkboxes'})
@@ -94,7 +94,8 @@ app.view('dinner-modal', async ({ack, client, body, view}) => {
 
     // Update the sheet with modal values
     const days = view.state.values['sign-up-checkboxes']['sign-up-action'].selected_options?.map(option => option.value);
-    // TODO
+    if (!days) return;
+    await updateSignUps(Number(view.private_metadata), days);
 });
 
 // reacted-shortcut
