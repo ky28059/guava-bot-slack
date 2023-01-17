@@ -15,7 +15,6 @@ const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const dayNameToRow = (n: string) => dayRows[dayNames.findIndex(d => d === n)];
 
 // Get a user's dinner signups for this week given their name.
-// TODO: name parsing for the ethans
 // Returns the week name, the user's spreadsheet column index, and a list of sign-up information per day.
 export async function getSignUps(name: string) {
     const weekName = getCurrentSheetName();
@@ -26,8 +25,9 @@ export async function getSignUps(name: string) {
     })).data.values;
     if (!sheet) return;
 
-    const [first,] = name.split(' ');
-    const column = sheet[0].findIndex(col => col.toLowerCase() === first.toLowerCase());
+    const [first, last] = name.split(' ');
+    const search = first.toLowerCase() !== 'ethan' ? first.toLowerCase() : `${first.toLowerCase()} ${last.charAt(0).toLowerCase()}`
+    const column = sheet[0].findIndex(col => col.toLowerCase() === search);
     if (column == -1) return;
 
     return {
