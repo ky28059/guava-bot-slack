@@ -47,7 +47,7 @@ app.command('/dinner', async ({command, ack, client, payload}) => {
     const res = await client.users.info({ token, user: command.user_id });
     if (!res.user?.real_name) return void client.views.open({
         trigger_id: payload.trigger_id,
-        view: Modal({title: 'An error occurred fetching your name.'})
+        view: Modal({title: 'Error fetching real_name'})
             .blocks(Section({text: 'Please make sure your Slack `real_name` is set to your real name. If you think this a mistake, please report this error to <@U03SQ766BFD>.'}))
             .buildToObject()
     });
@@ -56,7 +56,7 @@ app.command('/dinner', async ({command, ack, client, payload}) => {
     const info = await getSignUps(res.user!.real_name!);
     if (!info) return void client.views.open({
         trigger_id: payload.trigger_id,
-        view: Modal({title: 'An error occurred fetching your entry on the sign-ups sheet.'})
+        view: Modal({title: 'Error parsing sheet data'})
             .blocks(Section({text: 'Please make sure your Slack `real_name` is set to your real name. If you think this a mistake, please report this error to <@U03SQ766BFD>.'}))
             .buildToObject()
     });
@@ -66,7 +66,7 @@ app.command('/dinner', async ({command, ack, client, payload}) => {
         .filter(day => day.signedUp)
         .map(day => Option({text: day.name, description: day.slots, value: day.name}))
 
-    const view = Modal({title: `${info.week} Dinner Sign-ups`, submit: 'Submit', callbackId: 'dinner-modal', privateMetaData: info.column.toString()})
+    const view = Modal({title: `${info.week} Dinner Sign-up`, submit: 'Submit', callbackId: 'dinner-modal', privateMetaData: info.column.toString()})
         .blocks(
             Section({text: `Your dinner sign-ups for the week of ${info.week}. Don't sign up for a day that is already full, and remember that if you sign up for dinner you *must* stay for the rest of the night.`}),
             Input({label: 'Your dinner sign-ups:', blockId: 'sign-up-checkboxes'})
@@ -84,7 +84,7 @@ app.view('dinner-modal', async ({ack, client, body, view}) => {
     const weekName = getCurrentSheetName();
     await ack({
         response_action: 'update',
-        view: Modal({title: `${weekName} Dinner Sign-ups`})
+        view: Modal({title: `${weekName} Dinner Sign-up`})
             .blocks(
                 Header({text: 'Your dinner sign-ups have been successfully updated.'}),
                 Section({text: 'This modal can be safely closed. Have a nice day!'})
@@ -95,7 +95,7 @@ app.view('dinner-modal', async ({ack, client, body, view}) => {
     // Update the sheet with modal values
     const days = view.state.values['sign-up-checkboxes']['sign-up-action'].selected_options?.map(option => option.value);
     if (!days) return;
-    await updateSignUps(Number(view.private_metadata), days);
+    await updateSignUps(Number(view.private_metadata), days, weekName);
 });
 
 // reacted-shortcut

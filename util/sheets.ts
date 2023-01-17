@@ -42,12 +42,13 @@ export async function getSignUps(name: string) {
 }
 
 // Updates a user's dinner signups on the sheet to the given array of days.
-export async function updateSignUps(column: number, days: string[]) {
+export async function updateSignUps(column: number, days: string[], weekName: string) {
     await sheets.spreadsheets.values.batchUpdate({
         auth, spreadsheetId, requestBody: {
+            valueInputOption: 'RAW',
             data: dayNames.map(day => ({
-                range: getSheetColumn(column) + dayNameToRow(day),
-                values: [[days.includes(day) ? 'Yes' : '']]
+                range: `${weekName}!${getSheetColumn(column + 1)}${dayNameToRow(day) + 1}`,
+                values: [[days.includes(day) ? 'Yes' : '']],
             }))
         }
     })

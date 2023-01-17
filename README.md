@@ -33,6 +33,3 @@ API](https://console.cloud.google.com/marketplace/product/google/sheets.googleap
 ![image](https://user-images.githubusercontent.com/60120929/150878787-2d51b0f7-195e-4584-80da-364b38b58d40.png)
 
 Make sure whatever spreadsheet you're using as the linked signup spreadsheet is shared with your service account.
-
-### Deployment
-[...]
