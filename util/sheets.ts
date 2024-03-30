@@ -26,8 +26,8 @@ export async function getSignUps(name: string) {
     if (!sheet) return;
 
     const [first, last] = name.split(' ');
-    const search = first.toLowerCase() !== 'ethan' ? first.toLowerCase() : `${first.toLowerCase()} ${last.charAt(0).toLowerCase()}`
-    const column = sheet[0].findIndex(col => col.toLowerCase() === search);
+    const search = first.toLowerCase() !== 'ethan' ? first : `${first} ${last.charAt(0)}`
+    const column = sheet[0].findIndex(col => col.toLowerCase() === search.toLowerCase());
     if (column == -1) return;
 
     return {
